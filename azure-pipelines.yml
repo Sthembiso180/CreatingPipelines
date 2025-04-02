@@ -1,0 +1,45 @@
+# Maven Build and Deploy Pipeline for Azure DevOps
+
+trigger:
+- master  # Runs pipeline when code is pushed to master
+
+# Scheduled Run (Daily at 2 AM)
+schedules:
+- cron: "0 2 * * *"
+  displayName: "Daily Midnight Build"
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest  # Using Ubuntu as the build agent
+
+variables:
+  environment: 'staging'  # Defining the deployment environment
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildJob
+    steps:
+    - script: echo "Building the application..."
+    - script: echo "Running tests..."
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+    - script: echo "Build completed!"
+
+- stage: Deploy
+  jobs:
+  - deployment: DeployApp
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "Deploying to $(environment)..."
+          - task: AzureWebApp@1
+            inputs:
+              appName: 'your-webapp-name'
+              package: '$(Build.ArtifactStagingDirectory)/app.zip'
